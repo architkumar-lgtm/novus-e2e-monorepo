@@ -17,11 +17,28 @@ export function AssistantPanel() {
     setDraft("");
     setSending(true);
     setError(null);
+    const conversationTurn = next.filter((message) => message.role === "user").length;
     try {
-      const { reply } = await api.askAssistant(next);
+      const { reply, model } = await api.askAssistant(next);
+      // Records how the assistant request finished: answered or not configured.
+      window.pendo?.track("assistant_reply_received", {
+        outcome: model ? "answered" : "not_configured",
+        model: model ?? "none",
+        messageCount: next.length,
+        conversationTurn,
+      });
       setMessages([...next, { role: "assistant", content: reply }]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The assistant could not answer");
+      const message = err instanceof Error ? err.message : "The assistant could not answer";
+      // Records a failed assistant request, such as a 502 from the API.
+      window.pendo?.track("assistant_reply_received", {
+        outcome: "failed",
+        model: "none",
+        messageCount: next.length,
+        conversationTurn,
+        errorMessage: message.substring(0, 100),
+      });
+      setError(message);
     } finally {
       setSending(false);
     }
