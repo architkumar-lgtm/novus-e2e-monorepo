@@ -1,0 +1,36 @@
+/** Novus by Pendo lifecycle calls: initialize at entry, identify on sign-in, clear on sign-out. */
+import type { AdminProfile } from "../api/client";
+
+/** Boots the agent once per page load as an anonymous visitor (or the visitor it remembers). */
+export function initializePendo(): void {
+  window.pendo?.initialize({ visitor: { id: "" } });
+}
+
+/**
+ * Registers the signed-in admin and their organization with the agent. `seats` comes from the
+ * admin-only billing API, so it's passed in separately and left out when that request fails.
+ */
+export function identifyPendoVisitor(profile: AdminProfile, seats?: number): void {
+  window.pendo?.identify({
+    visitor: {
+      id: profile.id,
+      email: profile.email,
+      full_name: profile.name,
+      role: profile.role,
+      organizationId: profile.organization.id,
+      active: profile.active,
+      createdAt: profile.createdAt,
+    },
+    account: {
+      id: profile.organization.id,
+      name: profile.organization.name,
+      plan: profile.organization.plan,
+      ...(seats === undefined ? {} : { seats }),
+    },
+  });
+}
+
+/** Resets the agent to a new anonymous visitor so the next user isn't tracked as this one. */
+export function clearPendoSession(): void {
+  window.pendo?.clearSession?.();
+}
